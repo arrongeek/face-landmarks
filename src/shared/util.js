@@ -36,6 +36,25 @@ export function isMobile() {
 const img = new Image();
 img.src = 'https://s3.ap-northeast-2.amazonaws.com/test-admin.geekstudio.kr/png-transparent-black-framed-aviator-style-sunglasses-illustration-aviator-sunglasses-sunglasses-lens-copyright-glasses-removebg-preview.png';
 
+let color;
+
+const colorChange = {
+  'one': () => {
+    color = "rgba(230, 92, 72, 0.2)";
+  },
+  'two': () => {
+    color = "rgba(255, 79, 194, 0.2)";
+  },
+  'three': () => {
+    color = "rgba(255, 0, 22, 0.2)";
+  }
+};
+
+// 색상 적용 이벤트
+document.querySelector('.color-box').addEventListener('click', (e) => {
+  colorChange[e.target.value]?.(e);
+})
+
 /**
  * Reset the target backend.
  *
@@ -153,12 +172,9 @@ function drawPath(ctx, points, closePath) {
   }
 
   ctx.closePath();
-  ctx.fillStyle = "rgba(230, 92, 72, 0.2)";
+  console.log(typeof color)
+  ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
   ctx.fill('evenodd');
-
-
-  // 스파클링 효과
-  // sparkleAlongPath(ctx, points);
 
   // ctx.stroke(region);
   // 그라이데이션
