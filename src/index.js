@@ -146,6 +146,7 @@ async function app() {
   // Gui content will change depending on which model is in the query string.
   const urlParams = new URLSearchParams(window.location.search);
 
+  // 카메라 및 얼굴인식 랜드마크 설정 GUI 비노출
   await setupDatGui(urlParams);
 
   stats = setupStats();
