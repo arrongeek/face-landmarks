@@ -115,7 +115,7 @@ function distance(a, b) {
 */
 function drawPath(ctx, points, closePath) {
   const region = new Path2D();
-  // moveTo(x, y) 펜의 위치를 새로운 좌표 (x, y)로 이동시킵니다. 선은 그리지 않고 이도만 합니다.
+  // moveTo(x, y) 펜의 위치를 새로운 좌표 (x, y)로 이동시킵니다. 선은 그리지 않고 이동만 합니다.
   // region.moveTo(points[0][0], points[0][1]);
   // for (let i = 1; i < points.length; i++) {
   //   const point = points[i];
@@ -129,23 +129,36 @@ function drawPath(ctx, points, closePath) {
   ctx.beginPath(); // 경로를 다시 재설정해줌
   ctx.moveTo(points[0][0], points[0][1]);
   const x1 = points[0][0], y1 = points[0][1];
-  for (let i = 1; i < points.length; i++) {
-    const point = points[i];
-    // lineTo(x, y) 현재위치에서 (x, y)까지 선을 그립니다.
+  // for (let i = 1; i < points.length; i++) {
+    // const point = points[i];
+    // // lineTo(x, y) 현재위치에서 (x, y)까지 선을 그립니다.
+    // console.log(point)
+    //
+    // const x2 = point[0], y2 = point[1];
+    // const cpx = (x1 + x2) / 2;
+    // const cpy = (y1 + y2) / 2 - 50;
+    // // ctx.quadraticCurveTo(x2, y2, x2, y2); // 위쪽 곡선
+    // // ctx.quadraticCurveTo(y2, x2, x2, y2); // 아래쪽 곡선
+    // ctx.lineTo(point[0], point[1])
+  // }
 
-    const x2 = point[0], y2 = point[1];
+  for (let i = 1; i < points.length - 2; i++) {
+    const [x1, y1] = points[i - 1];
+    const [x2, y2] = points[i];
     const cpx = (x1 + x2) / 2;
-    const cpy = (y1 + y2) / 2 - 50;
-    // ctx.quadraticCurveTo(x2, y2, x2, y2); // 위쪽 곡선
-    // ctx.quadraticCurveTo(y2, x2, x2, y2); // 아래쪽 곡선
-    ctx.lineTo(point[0], point[1])
-  }
-  ctx.closePath();
+    const cpy = (y1 + y2) / 2;
 
+    // 곡선 형태 연결
+    ctx.quadraticCurveTo(x1, y1, cpx, cpy);
+  }
+
+  ctx.closePath();
   ctx.fillStyle = "rgba(230, 92, 72, 0.2)";
-  ctx.fill();
-  // 색상 채우기
-  sparkleAlongPath(ctx, points);
+  ctx.fill('evenodd');
+
+
+  // 스파클링 효과
+  // sparkleAlongPath(ctx, points);
 
   // ctx.stroke(region);
   // 그라이데이션
@@ -157,7 +170,7 @@ function drawPath(ctx, points, closePath) {
   // ctx.fill();
 }
 
-// 번쩍거리는 효과
+// 스파클링 효과
 function sparkleAlongPath(ctx, points) {
   for (let i = 0; i < points.length; i++) {
     const x = points[i][0];
@@ -274,17 +287,20 @@ export function drawResults(ctx, faces, triangulateMesh, boundingBox) {
 
     // 왼쪽 오른쪽 눈썹 외 부위 제거
     // lips는 for of 문 안에서 faceOval 처럼 제외처리가 안됨
-    const test = Object.entries(contours).filter(data => data[0] === 'leftEyebrow' || data[0] === 'rightEyebrow');
+    // 눈썹: leftEyebrow / rightEyebrow
+    // 눈동자: leftIris / rightIris
+    // 입술: lips
+    // 얼굴면적 전체: faceOval
+    // const eyeBrow = Object.entr/**/ies(contours).filter(data => data[0] === 'leftEyebrow' || data[0] === 'rightEyebrow');
+    const lips = Object.entries(contours).filter(data => data[0] === 'lips');
 
-    for (const [label, contour] of test) {
-      // 일단 입 빼고 전부 리턴
-      // ctx.strokeStyle = LABEL_TO_COLOR[label];
-
+    for (const [label, contour] of lips) {
       ctx.lineWidth = 3;
+
       // 실시간 입의 움직임 좌표(?) ex: [273.1239218412848, 265.23125125215]
       const path = contour.map((index) => keypoints[index]);
       if (path.every(value => value != undefined)) {
-        drawPath(ctx, path, false);
+        drawPath(ctx, path, true);
       }
     }
   });

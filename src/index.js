@@ -30,7 +30,7 @@ import {setupDatGui} from './option_panel';
 import {STATE, createDetector} from './shared/params';
 import {setupStats} from './shared/stats_panel';
 import {setBackendAndEnvFlags} from './shared/util';
-ㄷ
+
 let detector, camera, stats;
 let startInferenceTime, numInferences = 0;
 let inferenceTimeSum = 0, lastPanelUpdate = 0;
