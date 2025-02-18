@@ -37,6 +37,7 @@ const img = new Image();
 img.src = 'https://s3.ap-northeast-2.amazonaws.com/test-admin.geekstudio.kr/png-transparent-black-framed-aviator-style-sunglasses-illustration-aviator-sunglasses-sunglasses-lens-copyright-glasses-removebg-preview.png';
 
 let color;
+let faceParts;
 
 const colorChange = {
   'one': () => {
@@ -53,6 +54,10 @@ const colorChange = {
 // 색상 적용 이벤트
 document.querySelector('.color-box').addEventListener('click', (e) => {
   colorChange[e.target.value]?.(e);
+})
+
+document.querySelector('.face-apply-box').addEventListener('click', (e) => {
+  faceParts = e.target.value
 })
 
 /**
@@ -148,33 +153,40 @@ function drawPath(ctx, points, closePath) {
   ctx.beginPath(); // 경로를 다시 재설정해줌
   ctx.moveTo(points[0][0], points[0][1]);
   const x1 = points[0][0], y1 = points[0][1];
-  // for (let i = 1; i < points.length; i++) {
-    // const point = points[i];
-    // // lineTo(x, y) 현재위치에서 (x, y)까지 선을 그립니다.
-    // console.log(point)
-    //
-    // const x2 = point[0], y2 = point[1];
-    // const cpx = (x1 + x2) / 2;
-    // const cpy = (y1 + y2) / 2 - 50;
-    // // ctx.quadraticCurveTo(x2, y2, x2, y2); // 위쪽 곡선
-    // // ctx.quadraticCurveTo(y2, x2, x2, y2); // 아래쪽 곡선
-    // ctx.lineTo(point[0], point[1])
-  // }
 
-  for (let i = 1; i < points.length - 2; i++) {
-    const [x1, y1] = points[i - 1];
-    const [x2, y2] = points[i];
-    const cpx = (x1 + x2) / 2;
-    const cpy = (y1 + y2) / 2;
+  if (faceParts === 'eyebrow') {
+    for (let i = 1; i < points.length; i++) {
+      const point = points[i];
+      // lineTo(x, y) 현재위치에서 (x, y)까지 선을 그립니다.
 
-    // 곡선 형태 연결
-    ctx.quadraticCurveTo(x1, y1, cpx, cpy);
+      const x2 = point[0], y2 = point[1];
+      const cpx = (x1 + x2) / 2;
+      const cpy = (y1 + y2) / 2 - 50;
+      // ctx.quadraticCurveTo(x2, y2, x2, y2); // 위쪽 곡선
+      // ctx.quadraticCurveTo(y2, x2, x2, y2); // 아래쪽 곡선
+      ctx.lineTo(point[0], point[1])
+    }
+
+    ctx.closePath();
+    ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
+    ctx.fill();
   }
 
-  ctx.closePath();
-  console.log(typeof color)
-  ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
-  ctx.fill('evenodd');
+  if (faceParts === 'lips') {
+    for (let i = 1; i < points.length - 2; i++) {
+      const [x1, y1] = points[i - 1];
+      const [x2, y2] = points[i];
+      const cpx = (x1 + x2) / 2;
+      const cpy = (y1 + y2) / 2;
+
+      // 곡선 형태 연결
+      ctx.quadraticCurveTo(x1, y1, cpx, cpy);
+    }
+
+    ctx.closePath();
+    ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
+    ctx.fill('evenodd');
+  }
 
   // ctx.stroke(region);
   // 그라이데이션
@@ -191,13 +203,13 @@ function sparkleAlongPath(ctx, points) {
   for (let i = 0; i < points.length; i++) {
     const x = points[i][0];
     const y = points[i][1];
-    const size = Math.random() + 0.005; // 반짝이는 스파클링 사이즈
+    const size = Math.random() + 0.08; // 반짝이는 스파클링 사이즈
     const opacity = Math.random(); //
 
     // 경로의 각 점에 반짝이 원을 그리기
     ctx.beginPath();
     ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(238, 130, 238, ${opacity})`;
+    ctx.fillStyle = `rgba(167, 116, 80, ${opacity})`;
     ctx.fill();
   }
 }
@@ -307,10 +319,16 @@ export function drawResults(ctx, faces, triangulateMesh, boundingBox) {
     // 눈동자: leftIris / rightIris
     // 입술: lips
     // 얼굴면적 전체: faceOval
-    // const eyeBrow = Object.entr/**/ies(contours).filter(data => data[0] === 'leftEyebrow' || data[0] === 'rightEyebrow');
-    const lips = Object.entries(contours).filter(data => data[0] === 'lips');
+    let parts= [];
 
-    for (const [label, contour] of lips) {
+    if (faceParts === 'eyebrow') {
+      parts = Object.entries(contours).filter(data => data[0] === 'leftEyebrow' || data[0] === 'rightEyebrow');
+    }
+    if (faceParts === 'lips') {
+      parts = Object.entries(contours).filter(data => data[0] === 'lips');
+    }
+
+    for (const [label, contour] of parts) {
       ctx.lineWidth = 3;
 
       // 실시간 입의 움직임 좌표(?) ex: [273.1239218412848, 265.23125125215]
