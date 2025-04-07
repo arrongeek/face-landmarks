@@ -21,6 +21,7 @@ import {GREEN, LABEL_TO_COLOR, NUM_IRIS_KEYPOINTS, NUM_KEYPOINTS, RED, TUNABLE_F
 import {TRIANGULATION} from './triangulation';
 import * as THREE from 'three';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton';
+import {log1p} from "@tensorflow/tfjs-core";
 export function isiOS() {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
@@ -41,13 +42,13 @@ let faceParts;
 
 const colorChange = {
   'one': () => {
-    color = "rgba(230, 92, 72, 0.2)";
+    color = "rgba(230, 92, 72, 0.1)";
   },
   'two': () => {
-    color = "rgba(255, 79, 194, 0.2)";
+    color = "rgba(255, 79, 194, 0.1)";
   },
   'three': () => {
-    color = "rgba(255, 0, 22, 0.2)";
+    color = "rgba(255, 0, 22, 0.1)";
   }
 };
 
@@ -136,7 +137,7 @@ function distance(a, b) {
 /**
  * @params ctx 부위 스타일
  * @params points 부위 좌표
-*/
+ */
 function drawPath(ctx, points, closePath) {
   const region = new Path2D();
   // moveTo(x, y) 펜의 위치를 새로운 좌표 (x, y)로 이동시킵니다. 선은 그리지 않고 이동만 합니다.
@@ -158,7 +159,6 @@ function drawPath(ctx, points, closePath) {
     for (let i = 1; i < points.length; i++) {
       const point = points[i];
       // lineTo(x, y) 현재위치에서 (x, y)까지 선을 그립니다.
-
       const x2 = point[0], y2 = point[1];
       const cpx = (x1 + x2) / 2;
       const cpy = (y1 + y2) / 2 - 50;
@@ -166,29 +166,44 @@ function drawPath(ctx, points, closePath) {
       // ctx.quadraticCurveTo(y2, x2, x2, y2); // 아래쪽 곡선
       ctx.lineTo(point[0], point[1])
     }
-
     ctx.closePath();
     ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
     ctx.fill();
+
   }
 
   if (faceParts === 'lips') {
-    for (let i = 1; i < points.length - 2; i++) {
-      const [x1, y1] = points[i - 1];
-      const [x2, y2] = points[i];
-      const cpx = (x1 + x2) / 2;
-      const cpy = (y1 + y2) / 2;
+      const region = new Path2D();
 
-      // 곡선 형태 연결
-      ctx.quadraticCurveTo(x1, y1, cpx, cpy);
-    }
+      // 윗입술 그리기 (0 ~ 중간까지)
+      const mid = Math.floor(points.length / 2.0);
+      region.moveTo(points[0][0], points[0][1]);
 
-    ctx.closePath();
-    ctx.fillStyle = typeof color === 'undefined' ? sparkleAlongPath(ctx, points) : color;
-    ctx.fill('evenodd');
+      for (let i = 1; i < mid; i++) {
+          const [x1, y1] = points[i - 1];
+          const [x2, y2] = points[i];
+          const cpx = (x1 + x2) / 2;
+          const cpy = (y1 + y2) / 2;
+          region.quadraticCurveTo(x1, y1, cpx, cpy);
+      }
+
+      // 아랫입술 (중간부터 역방향으로)
+      for (let i = points.length - 1; i > mid; i--) {
+          const [x1, y1] = points[i];
+          const [x2, y2] = points[i - 1];
+          const cpx = (x1 + x2) / 2;
+          const cpy = (y1 + y2) / 2;
+          region.quadraticCurveTo(x1, y1, cpx, cpy);
+      }
+
+      if (closePath) {
+          region.closePath();
+      }
+
+      ctx.fillStyle = color || 'rgba(230, 92, 72, 0.4)';
+      ctx.fill(region);
   }
 
-  // ctx.stroke(region);
   // 그라이데이션
   // const gradient = ctx.createLinearGradient(50, 100, 150, 100);
   // gradient.addColorStop(0, "red");
@@ -271,44 +286,44 @@ export function drawResults(ctx, faces, triangulateMesh, boundingBox) {
 
     // 얼굴 랜드마크 다듬는 기능
     /**
-    if (keypoints.length > NUM_KEYPOINTS) {
-      // 눈 동공 색상
-      ctx.strokeStyle = RED;
-      ctx.lineWidth = 1;
+     if (keypoints.length > NUM_KEYPOINTS) {
+     // 눈 동공 색상
+     ctx.strokeStyle = RED;
+     ctx.lineWidth = 1;
 
-      // 왼쪽 동공
-      const leftCenter = keypoints[NUM_KEYPOINTS];
-      const leftDiameterY =
-          distance(keypoints[NUM_KEYPOINTS + 4], keypoints[NUM_KEYPOINTS + 2]);
-      const leftDiameterX =
-          distance(keypoints[NUM_KEYPOINTS + 3], keypoints[NUM_KEYPOINTS + 1]);
+     // 왼쪽 동공
+     const leftCenter = keypoints[NUM_KEYPOINTS];
+     const leftDiameterY =
+     distance(keypoints[NUM_KEYPOINTS + 4], keypoints[NUM_KEYPOINTS + 2]);
+     const leftDiameterX =
+     distance(keypoints[NUM_KEYPOINTS + 3], keypoints[NUM_KEYPOINTS + 1]);
 
-      ctx.beginPath();
-      // ellips(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise)
-      // 중심이 (x, y)이고 radiusX와 radiusY를 가진 타원을 그립니다.
-      ctx.ellipse(
-          leftCenter[0], leftCenter[1], leftDiameterX / 2, leftDiameterY / 2, 0,
-          0, 2 * Math.PI);
-      ctx.stroke();
+     ctx.beginPath();
+     // ellips(x, y, radiusX, radiusY, rotation, startAngle, endAngle, counterclockwise)
+     // 중심이 (x, y)이고 radiusX와 radiusY를 가진 타원을 그립니다.
+     ctx.ellipse(
+     leftCenter[0], leftCenter[1], leftDiameterX / 2, leftDiameterY / 2, 0,
+     0, 2 * Math.PI);
+     ctx.stroke();
 
-      // 오른쪽 동공
-      if (keypoints.length > NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS) {
-        const rightCenter = keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS];
-        const rightDiameterY = distance(
-            keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 2],
-            keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 4]);
-        const rightDiameterX = distance(
-            keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 3],
-            keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 1]);
+     // 오른쪽 동공
+     if (keypoints.length > NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS) {
+     const rightCenter = keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS];
+     const rightDiameterY = distance(
+     keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 2],
+     keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 4]);
+     const rightDiameterX = distance(
+     keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 3],
+     keypoints[NUM_KEYPOINTS + NUM_IRIS_KEYPOINTS + 1]);
 
-        ctx.beginPath();
-        ctx.ellipse(
-            rightCenter[0], rightCenter[1], rightDiameterX / 2,
-            rightDiameterY / 2, 0, 0, 2 * Math.PI);
-        ctx.stroke();
-      }
-    }
-      */
+     ctx.beginPath();
+     ctx.ellipse(
+     rightCenter[0], rightCenter[1], rightDiameterX / 2,
+     rightDiameterY / 2, 0, 0, 2 * Math.PI);
+     ctx.stroke();
+     }
+     }
+     */
 
     const contours = faceLandmarksDetection.util.getKeypointIndexByContour(
         faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh);
@@ -339,3 +354,4 @@ export function drawResults(ctx, faces, triangulateMesh, boundingBox) {
     }
   });
 }
+``
